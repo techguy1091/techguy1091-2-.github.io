@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dungeon Escape</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background-color: #111;
+      color: #eee;
+      padding: 20px;
+    }
+    #game-log {
+      background: #222;
+      padding: 15px;
+      border-radius: 10px;
+      height: 300px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    }
+    input, button {
+      font-size: 1rem;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🗝️ Dungeon Escape</h1>
+<div id="game-log"></div>
+
+<input id="command" type="text" placeholder="Type a command (e.g., go north)" />
+<button onclick="handleCommand()">Submit</button>
+
+<script>
+  const map = {
+    entrance: { north: 'hallway', item: null },
+    hallway: { south: 'entrance', east: 'armory', west: 'library', north: 'trap', item: 'torch' },
+    armory: { west: 'hallway', item: 'sword' },
+    trap: { message: 'You fell into a trap and died!' },
+    library: { east: 'hallway', north: 'secret room', item: 'book', monster: true },
+    "secret room": { south: 'library', item: 'key', monster: true },
+    exit: { locked: true }
+  };
+
+  const player = {
+    location: 'entrance',
+    inventory: []
+  };
+
+  let gameRunning = true;
+
+  const log = (msg) => {
+    const logDiv = document.getElementById('game-log');
+    logDiv.innerHTML += `<div>> ${msg}</div>`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+  };
+
+  const showInstructions = () => {
+    log(`Welcome to the Dungeon Escape!`);
+    log(`Commands: go [direction], take, inventory, exit`);
+    log(`Find the key and escape through the door!`);
+  };
+
+  const move = (direction) => {
+    const currentRoom = map[player.location];
+    const newLocation = currentRoom[direction];
+
+    if (!newLocation) {
+      log("You can't go that way!");
+      return;
+    }
+
+    if (newLocation === 'trap') {
+      log(map[newLocation].message);
+      gameRunning = false;
+      return;
+    }
+
+    player.location = newLocation;
+    log(`You moved ${direction} to the ${newLocation}.`);
+
+    const room = map[newLocation];
+    if (room.monster) {
+      monsterEncounter();
+    }
+
+    const directions = Object.keys(room).filter(k => !['item', 'monster', 'locked', 'message'].includes(k));
+    log(`Available directions: ${directions.join(', ') || "None"}`);
+    log(room.item ? `There is a ${room.item} here.` : "There's nothing to take here.");
+  };
+
+  const takeItem = () => {
+    const room = map[player.location];
+    if (room.item) {
+      player.inventory.push(room.item);
+      log(`You picked up ${room.item}.`);
+      room.item = null;
+    } else {
+      log("There's nothing to take here.");
+    }
+  };
+
+  const checkExit = () => {
+    if (player.location === 'exit') {
+      if (player.inventory.includes('key')) {
+        log("🎉 You unlocked the door and escaped!");
+        gameRunning = false;
+      } else {
+        log("The door is locked! You need a key.");
+      }
+    } else {
+      log("You are not at the exit yet.");
+    }
+  };
+
+  const monsterEncounter = () => {
+    log("A monster is here! Type 'fight', 'hide', or 'run'.");
+  };
+
+  const handleCombat = (action) => {
+    const room = map[player.location];
+    if (!room.monster) return;
+
+    if (action === 'hide') {
+      if (Math.random() < 0.5) {
+        log("You successfully hid from the monster.");
+        return;
+      } else {
+        log("The monster found you!");
+        return;
+      }
+    }
+
+    if (action === 'fight') {
+      if (player.inventory.includes('sword')) {
+        log("You killed the monster with your sword!");
+        room.monster = false;
+      } else {
+        log("You have no weapon! The monster killed you.");
+        gameRunning = false;
+      }
+    } else if (action === 'run') {
+      log("You tried to run but the monster caught you.");
+      gameRunning = false;
+    }
+  };
+
+  const handleCommand = () => {
+    if (!gameRunning) return log("Game over. Refresh to play again.");
+
+    const input = document.getElementById('command');
+    const command = input.value.toLowerCase().trim().split(" ");
+    input.value = "";
+
+    const action = command[0];
+    const arg = command[1];
+
+    if (action === 'go' && arg) move(arg);
+    else if (action === 'take') takeItem();
+    else if (action === 'inventory') log(`Inventory: ${player.inventory.join(', ') || 'Empty'}`);
+    else if (action === 'exit') checkExit();
+    else if (['fight', 'hide', 'run'].includes(action)) handleCombat(action);
+    else log("Unknown command.");
+  };
+
+  showInstructions();
+</script>
+</body>
+</html>
